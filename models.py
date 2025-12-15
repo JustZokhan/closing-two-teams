@@ -7,6 +7,10 @@ class Team(Base):
     key = Column(String, primary_key=True)  # 'left' | 'right'
     name = Column(String, nullable=False)
 
+    # Targets stored as integer amounts (e.g., rubles)
+    target_daily = Column(Integer, default=4_000_000, nullable=False)
+    target_weekly = Column(Integer, default=24_000_000, nullable=False)
+
 class Employee(Base):
     __tablename__ = "employees"
     id = Column(Integer, primary_key=True, index=True)
