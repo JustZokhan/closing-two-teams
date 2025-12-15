@@ -1,5 +1,4 @@
 
-{% set daily_target_mln = (TARGET_DAILY // 1_000_000) | int %}
 {% macro kk(v) -%}{{ ('%.1f' % (v/1_000_000))|replace('.0','') }}кк{%- endmacro %}
 <!DOCTYPE html>
 <html lang="ru">
@@ -19,9 +18,9 @@
     <div class="grid">
       <div class="card">
         {% set done = left.grand_total %}
-        {% set left_rem = (WEEKLY_TARGET - done) if WEEKLY_TARGET>done else 0 %}
+        {% set left_rem = (left.target_weekly - done) if left.target_weekly>done else 0 %}
         <div class="section-title">
-          {{ left.name }} • Цель 24кк<br>Уже угнали: {{ kk(done) }} • Осталось: {{ kk(left_rem) }}
+          {{ left.name }} • Цель {{ kk(left.target_weekly) }}<br>Уже угнали: {{ kk(done) }} • Осталось: {{ kk(left_rem) }}
         </div>
         <div class="team-grid">
           <div>
@@ -29,11 +28,12 @@
             <div class="days">
               {% for d in days %}
               {% set v = left.totals_by_day[d] %}
-              {% set ok = (v >= TARGET_DAILY) %}
-              {% set pct = (v * 100 // TARGET_DAILY) if TARGET_DAILY else 0 %}
+              {% set ok = (v >= left.target_daily) %}
+              {% set pct_raw = (v * 100 // left.target_daily) if left.target_daily else 0 %}
+              {% set pct = 100 if pct_raw > 100 else pct_raw %}
               <div class="daybox {% if ok %}ok{% endif %}">
                 <div>{{ d }}</div>
-                <span class="sum">{{ kk(v) }}/{{ daily_target_mln }}кк</span>
+                <span class="sum">{{ kk(v) }}/{{ kk(left.target_daily) }}</span>
                 <div class="progress"><i style="width: {{ pct }}%"></i></div>
               </div>
               {% endfor %}
@@ -55,9 +55,9 @@
 
       <div class="card">
         {% set done = right.grand_total %}
-        {% set right_rem = (WEEKLY_TARGET - done) if WEEKLY_TARGET>done else 0 %}
+        {% set right_rem = (right.target_weekly - done) if right.target_weekly>done else 0 %}
         <div class="section-title">
-          {{ right.name }} • Цель 24кк<br>Уже угнали: {{ kk(done) }} • Осталось: {{ kk(right_rem) }}
+          {{ right.name }} • Цель {{ kk(right.target_weekly) }}<br>Уже угнали: {{ kk(done) }} • Осталось: {{ kk(right_rem) }}
         </div>
         <div class="team-grid">
           <div>
@@ -65,11 +65,12 @@
             <div class="days">
               {% for d in days %}
               {% set v = right.totals_by_day[d] %}
-              {% set ok = (v >= TARGET_DAILY) %}
-              {% set pct = (v * 100 // TARGET_DAILY) if TARGET_DAILY else 0 %}
+              {% set ok = (v >= right.target_daily) %}
+              {% set pct_raw = (v * 100 // right.target_daily) if right.target_daily else 0 %}
+              {% set pct = 100 if pct_raw > 100 else pct_raw %}
               <div class="daybox {% if ok %}ok{% endif %}">
                 <div>{{ d }}</div>
-                <span class="sum">{{ kk(v) }}/{{ daily_target_mln }}кк</span>
+                <span class="sum">{{ kk(v) }}/{{ kk(right.target_daily) }}</span>
                 <div class="progress"><i style="width: {{ pct }}%"></i></div>
               </div>
               {% endfor %}
