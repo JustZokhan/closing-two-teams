@@ -34,10 +34,15 @@ STATIC_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-TARGET_DAILY = 4_000_000
-WEEKLY_TARGET = 24_000_000
-DAYS_ORDER = ["ПТ","СБ","ПН","ВТ","СР","ЧТ"]
+# Цели по командам
+# Team targets are stored in the database (teams.target_daily / teams.target_weekly).
+# These are just fallback defaults for older databases / safety.
+DEFAULT_TEAM_TARGETS = {
+    "left":  {"daily": 4_000_000,  "weekly": 24_000_000},
+    "right": {"daily": 4_200_000,  "weekly": 25_000_000},
+}
 
+DAYS_ORDER = ["ПТ","СБ","ПН","ВТ","СР","ЧТ"]
 @app.on_event("startup")
 def _startup():
     init_db()
@@ -104,7 +109,17 @@ def team_aggregates(db: Session, team_key: str):
                  .all())
     team = db.query(Team).filter(Team.key == team_key).first()
     team_name = team.name if team else team_key
-    return {"name": team_name, "employees": employees, "totals_by_day": totals_by_day, "grand_total": grand_total}
+    fallback = DEFAULT_TEAM_TARGETS.get(team_key, {"daily": 0, "weekly": 0})
+    target_daily = int(team.target_daily) if team is not None and getattr(team, "target_daily", None) is not None else int(fallback.get("daily", 0))
+    target_weekly = int(team.target_weekly) if team is not None and getattr(team, "target_weekly", None) is not None else int(fallback.get("weekly", 0))
+    return {
+        "name": team_name,
+        "employees": employees,
+        "totals_by_day": totals_by_day,
+        "grand_total": grand_total,
+        "target_daily": target_daily,
+        "target_weekly": target_weekly,
+    }
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
@@ -113,9 +128,8 @@ def index(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("index.html", {
         "request": request,
         "days": DAYS_ORDER,
-        "TARGET_DAILY": TARGET_DAILY,
-        "WEEKLY_TARGET": WEEKLY_TARGET,
-        "left": left, "right": right,
+        "left": left,
+        "right": right,
     })
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -161,6 +175,35 @@ async def rename_team(request: Request, key: str = Form(...), name: str = Form(.
     db.commit()
     await _reload()
     return JSONResponse({"status":"success","message":"Название команды сохранено"})
+
+
+@app.post("/admin/team/targets")
+async def set_team_targets(
+    request: Request,
+    key: str = Form(...),
+    target_daily: str = Form(...),
+    target_weekly: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not is_admin(request):
+        return JSONResponse({"status":"error","message":"Требуется авторизация"}, status_code=403)
+
+    td = parse_amount(target_daily)
+    tw = parse_amount(target_weekly)
+    if td < 0: td = 0
+    if tw < 0: tw = 0
+
+    t = db.query(Team).filter(Team.key == key).first()
+    if not t:
+        t = Team(key=key, name=key, target_daily=td, target_weekly=tw)
+        db.add(t)
+    else:
+        t.target_daily = td
+        t.target_weekly = tw
+
+    db.commit()
+    await _reload()
+    return JSONResponse({"status":"success","message":"Цели команды сохранены"})
 
 @app.post("/admin/employee/add")
 async def employee_add(request: Request, name: str = Form(...), team_key: str = Form("left"), db: Session = Depends(get_db)):
@@ -262,3 +305,4 @@ async def events(request: Request):
         finally:
             await hub.disconnect(q)
     return StreamingResponse(gen(), media_type="text/event-stream")
+
