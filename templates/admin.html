@@ -1,4 +1,4 @@
-
+{% macro kk(v) -%}{{ ('%.1f' % ((v|default(0))/1_000_000))|replace('.0','') }}кк{%- endmacro %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -28,7 +28,26 @@
           <input type="text" id="teamname_{{ t.key }}" value="{{ t.name }}" class="input" style="width: 260px;">
         </div>
         {% endfor %}
-        <button class="btn" type="submit">Сохранить названия</button>
+     
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Цели команд</h3>
+      <div class="muted" style="margin-bottom:10px;">Можно вводить: <b>4.2кк</b>, <b>4200000</b>, <b>4200к</b> и т.д.</div>
+
+      <div class="actions" style="gap:10px; flex-wrap:wrap;">
+        {% for t in teams %}
+        <div style="flex:1 1 320px; min-width:300px; padding:10px; border-radius:12px; background:rgba(0,0,0,.18);">
+          <div class="muted" style="margin-bottom:8px;"><b>{{ t.name }}</b> ({{ t.key }})</div>
+          <div class="actions" style="gap:8px; flex-wrap:wrap;">
+            <input id="target_daily_{{ t.key }}" class="input" placeholder="Цель в день" value="{{ kk(t.target_daily) }}" style="width:140px;">
+            <input id="target_weekly_{{ t.key }}" class="input" placeholder="Цель в неделю" value="{{ kk(t.target_weekly) }}" style="width:140px;">
+            <button class="btn" type="button" onclick="saveTargets('{{ t.key }}')">Сохранить</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+   <button class="btn" type="submit">Сохранить названия</button>
       </form>
     </div>
 
@@ -104,6 +123,14 @@ async function postForm(url, payload){
   catch(e){alert('Ошибка сети');return {status:'error'};}
 }
 async function saveTeamNames(e){e.preventDefault();for(const key of ['left','right']){const val=document.getElementById('teamname_'+key).value||key;await postForm('/admin/team/rename',{key,name:val});}location.reload();}
+async function saveTargets(key){
+  const target_daily=document.getElementById('target_daily_'+key).value.trim();
+  const target_weekly=document.getElementById('target_weekly_'+key).value.trim();
+  const d=await postForm('/admin/team/targets',{key,target_daily,target_weekly});
+  if(d.status!=='success')return alert(d.message||'Ошибка');
+  location.reload();
+}
+
 async function addEmployee(){const name=document.getElementById('new_emp_name').value.trim();const team_key=document.getElementById('new_emp_team').value;if(!name)return alert('Введите имя');const d=await postForm('/admin/employee/add',{name,team_key});if(d.status!=='success')return alert(d.message||'Ошибка');location.reload();}
 async function renameEmployee(id){const name=document.getElementById('name_'+id).value;const d=await postForm('/admin/employee/rename',{employee_id:id,name});if(d.status!=='success')return alert(d.message||'Ошибка');location.reload();}
 async function setTeam(empId){const team_key=document.getElementById('team_'+empId).value;const d=await postForm('/admin/employee/set_team',{employee_id:empId,team_key});if(d.status!=='success')return alert(d.message||'Ошибка');location.reload();}
@@ -114,3 +141,4 @@ async function resetAll(){if(!confirm('Вы уверены, что хотите 
 </script>
 </body>
 </html>
+
