@@ -134,25 +134,24 @@ def index(request: Request, db: Session = Depends(get_db)):
 @app.get("/admin", response_class=HTMLResponse)
 def admin_get(request: Request, db: Session = Depends(get_db)):
     if not is_admin(request):
-        return templates.TemplateResponse("admin_login.html", {"request": request})
+        return templates.TemplateResponse(request, "admin_login.html", {})
     employees = db.query(Employee).order_by(Employee.id.asc()).all()
     results = db.query(Result).all()
     res_map = {}
     for r in results:
         res_map.setdefault(r.employee_id, {})[r.day] = r.amount
     teams = db.query(Team).order_by(Team.key.asc()).all()
-    return templates.TemplateResponse("admin.html", {
-        "request": request,
-        "employees": employees, "days": DAYS_ORDER,
-        "res_map": res_map, "teams": teams,
-    })
+    return templates.TemplateResponse(request, "admin.html", {
+    "employees": employees, "days": DAYS_ORDER,
+    "res_map": res_map, "teams": teams,
+})
 
 @app.post("/admin/login")
 def admin_login(request: Request, password: str = Form(...)):
     if password.strip() == ADMIN_PASSWORD:
         request.session["is_admin"] = True
         return RedirectResponse(url="/admin", status_code=302)
-    return templates.TemplateResponse("admin_login.html", {"request": request, "error": "Неверный пароль"})
+    return templates.TemplateResponse(request, "admin_login.html", { "error": "Неверный пароль"})
 
 @app.post("/admin/logout")
 def admin_logout(request: Request):
