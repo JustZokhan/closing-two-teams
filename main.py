@@ -125,12 +125,11 @@ def team_aggregates(db: Session, team_key: str):
 def index(request: Request, db: Session = Depends(get_db)):
     left = team_aggregates(db, "left")
     right = team_aggregates(db, "right")
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "days": DAYS_ORDER,
-        "left": left,
-        "right": right,
-    })
+    return templates.TemplateResponse(request, "index.html", {
+    "days": DAYS_ORDER,
+    "left": left,
+    "right": right,
+})
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_get(request: Request, db: Session = Depends(get_db)):
